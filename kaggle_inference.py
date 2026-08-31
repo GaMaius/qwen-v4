@@ -43,20 +43,37 @@ r = subprocess.run([sys.executable, "-c", "import vllm; print(vllm.__version__)"
 assert r.returncode == 0, "vllm 설치 실패:\n" + r.stderr[-500:]
 print("vllm", r.stdout.strip())
 
-TEST, = glob.glob("/kaggle/input/**/test_submission.csv", recursive=True)
-SC    = glob.glob("/kaggle/input/**/02_infer_vllm.py", recursive=True)[0]
-# 모델 폴더. 노트북에 베이스 모델이 함께 붙어 있으면 그쪽이 먼저 잡히므로
-# 이름으로 못 박는다. 베이스로 추론하면 점수가 통째로 무너진다.
+TEST = glob.glob("/kaggle/input/**/test_submission.csv", recursive=True)
+assert len(TEST) == 1, "test_submission.csv 가 %d개: %s" % (len(TEST), TEST)
+TEST, = TEST
+
+SC = glob.glob("/kaggle/input/**/02_infer_vllm.py", recursive=True)
+assert len(SC) == 1, "02_infer_vllm.py 가 %d개: %s" % (len(SC), SC)
+SC, = SC
+
+# 모델 폴더. config.json 첫 매치를 쓰면 노트북에 함께 붙어 있는 "베이스"
+# Qwen2.5-3B-Instruct 가 먼저 잡힌다. 이름으로 못 박고 후보를 찍어둔다.
 _cands = [os.path.dirname(c)
           for c in glob.glob("/kaggle/input/**/config.json", recursive=True)
           if glob.glob(os.path.dirname(c) + "/*.safetensors")]
+print("모델 후보:")
+for c in _cands:
+    print("   ", c)
 MODEL = [c for c in _cands if "qwen_v4_merged" in c]
 assert len(MODEL) == 1, (
     "파인튜닝 모델(qwen_v4_merged)을 특정할 수 없습니다. 후보: %s" % _cands)
 MODEL, = MODEL
 
+# 크기로 한 번 더 확인. 파인튜닝본은 5.75 GiB 다.
+# 파일 복사가 중간에 잘리면 safetensors 헤더 오류로 모델 로딩 단계에서 죽는다.
+_gb = sum(os.path.getsize(f)
+          for f in glob.glob(os.path.join(MODEL, "*.safetensors"))) / 2 ** 30
+assert _gb > 4, "가중치가 %.2f GiB — 파일이 불완전합니다" % _gb
+
 ref = pd.read_csv(TEST)
-print("입력 %d행 %s\n모델 %s" % (len(ref), list(ref.columns), MODEL))
+assert {"id", "question"} <= set(ref.columns), list(ref.columns)
+print("입력 %d행 %s\n모델 %s (%.2f GiB)"
+      % (len(ref), list(ref.columns), MODEL, _gb))
 
 # 이전 산출물이 남아 있으면 02_infer_vllm.py 가 "이어하기"로 판단해
 # 그만큼만 채우고 끝낸다. 노트북을 Commit 으로 재실행할 때 특히 위험하다.
