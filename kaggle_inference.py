@@ -45,9 +45,15 @@ print("vllm", r.stdout.strip())
 
 TEST, = glob.glob("/kaggle/input/**/test_submission.csv", recursive=True)
 SC    = glob.glob("/kaggle/input/**/02_infer_vllm.py", recursive=True)[0]
-MODEL = os.path.dirname([c for c in glob.glob("/kaggle/input/**/config.json",
-                                              recursive=True)
-                         if glob.glob(os.path.dirname(c) + "/*.safetensors")][0])
+# 모델 폴더. 노트북에 베이스 모델이 함께 붙어 있으면 그쪽이 먼저 잡히므로
+# 이름으로 못 박는다. 베이스로 추론하면 점수가 통째로 무너진다.
+_cands = [os.path.dirname(c)
+          for c in glob.glob("/kaggle/input/**/config.json", recursive=True)
+          if glob.glob(os.path.dirname(c) + "/*.safetensors")]
+MODEL = [c for c in _cands if "qwen_v4_merged" in c]
+assert len(MODEL) == 1, (
+    "파인튜닝 모델(qwen_v4_merged)을 특정할 수 없습니다. 후보: %s" % _cands)
+MODEL, = MODEL
 
 ref = pd.read_csv(TEST)
 print("입력 %d행 %s\n모델 %s" % (len(ref), list(ref.columns), MODEL))

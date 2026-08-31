@@ -41,7 +41,7 @@ T4 는 FlashAttention-2 를 지원하지 않아 vLLM 이 `TRITON_ATTN` 백엔드
 
 ```bash
 # 캐글 노트북(Internet: Off)에서 그대로 실행된다
-WHEELS=$(dirname $(ls /kaggle/input/**/*.whl | head -1))
+WHEELS=$(dirname $(find /kaggle/input -name '*.whl' | head -1))
 pip install --no-index --find-links=$WHEELS vllm torchvision
 pip uninstall -y torchaudio   # torch(cu130)와 CUDA 버전이 어긋나 vLLM 로드를 막는다
 ```
@@ -49,7 +49,7 @@ pip uninstall -y torchaudio   # torch(cu130)와 CUDA 버전이 어긋나 vLLM �
 `--no-index` 가 없으면 인터넷 차단 상태에서 PyPI 를 조회하려다 실패한다.
 설치에 약 260초가 걸린다.
 
-> 휠은 동일한 캐글 이미지(Python 3.12.13)에서 `pip download vllm==0.27.1 torchvision`
+> 휠은 동일한 캐글 이미지(Python 3.12.13)에서 `pip download vllm torchvision`(당시 vLLM 0.27.1)
 > 으로 만들었다. 인터프리터 버전이 다르면 `cp312` 휠이 맞지 않으므로,
 > 환경을 바꿔 재현할 때는 그 환경에서 다시 받아야 한다.
 
@@ -58,8 +58,9 @@ pip uninstall -y torchaudio   # torch(cu130)와 CUDA 버전이 어긋나 vLLM �
 ## 3. 학습 데이터
 
 ### 3.1 주최측 제공 데이터
-- 대회 train 데이터셋. `train_filtered_ids.csv` 및 자체 검출한
-  오답 라벨(`bad_label_ids.csv`)을 제외하고 사용.
+- 대회 train 데이터셋을 사용했다. 라벨 정제는 `01_clean_data.py` 에서
+  수행하며, 자기일관성 투표로 따로 검출한 오답 라벨 목록을
+  `bad_label_ids.csv` 로 남겼다.
 - test 데이터는 학습에 **사용하지 않았다** (규칙 5.1b).
 
 ### 3.2 외부 공개 데이터셋 (규칙 5.2c 명시)
@@ -82,11 +83,22 @@ pip uninstall -y torchaudio   # torch(cu130)와 CUDA 버전이 어긋나 vLLM �
 
 ### 4.1 데이터 준비
 ```bash
-python 01_clean_data.py          # 라벨 정제 · 포맷 통일
-python 04_add_external_data.py   # 외부 데이터셋 수집 · 병합
-python 10_find_bad_labels.py     # 오답 라벨 검출 → bad_label_ids.csv
+# 라벨 정제 · 포맷 통일
+#   → deep_chal_math_clean_v4.csv, local_val_500.csv(자체 홀드아웃 500문항)
+python 01_clean_data.py
+
+# 외부 공개 데이터셋 수집 · 병합
+#   → deep_chal_math_clean_v5.csv (40,269행) — 학습 입력
+python 04_add_external_data.py --base deep_chal_math_clean_v4.csv
 ```
-산출물: `deep_chal_math_clean_v5.csv` (40,269행)
+
+`local_val_500.csv` 는 train 에서 떼어낸 홀드아웃이며 학습에 넣지 않는다.
+설정 선택(온도·토큰 길이·앙상블 여부)은 전부 이 500문항에서 결정했고,
+리더보드 제출로 튜닝하지 않았다.
+
+> `10_find_bad_labels.py` 는 자기일관성 생성 결과(`rft_out/`)를 입력으로
+> 오답 라벨을 찾는 진단 도구다. 그 생성 단계는 최종 모델 학습 경로에
+> 포함되지 않으므로, 산출물인 `bad_label_ids.csv` 만 저장소에 넣었다.
 
 ### 4.2 학습
 ```bash
@@ -197,6 +209,11 @@ Public 리더보드(831문항) 실측. 자세한 내용은 [METHODOLOGY.md](METH
 | temp 0.7 + 다른 모델 앙상블, n=64 | 0.75090 |
 | temp 0.7 + 프롬프트 다양성, n=64 | 0.75451 |
 | **temp 0.5, max_tokens 2048, n=32** | **0.77617** |
+
+> 위 앙상블 실험의 두 모델은 **모두 `Qwen/Qwen2.5-3B-Instruct` 에서
+> 파인튜닝한 것**이며, 외부 모델을 호출하지 않았다 (규칙 4.3).
+> 그리고 이득이 없어 **최종 제출에는 사용하지 않았다.** 제출 구성은
+> 단일 모델 + self-consistency 다수결이다.
 
 배운 것:
 
