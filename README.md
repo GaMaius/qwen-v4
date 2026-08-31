@@ -152,7 +152,9 @@ cd qwen-v4 && kaggle datasets init -p . && kaggle datasets create -p .
 
 #### 실행
 
-노트북에 셀 두 개를 만든다.
+제출에 실제로 사용한 노트북이 `kaggle_notebook_submission.ipynb` 다.
+캐글에 그대로 올려 위 Input 4개를 붙이면 된다.
+새로 만들려면 셀 두 개면 충분하다.
 
 ```python
 # 셀 1 — 오프라인 설치 (약 260초)
@@ -276,7 +278,8 @@ Public 리더보드(831문항) 실측. 자세한 내용은 [METHODOLOGY.md](METH
 
 | 파일 | 역할 |
 |---|---|
-| **`kaggle_inference.py`** | **제출 파일 재현 — 설치·추론·검증 전 과정** |
+| **`kaggle_notebook_submission.ipynb`** | **제출에 실제로 사용한 캐글 노트북 원본** |
+| `kaggle_inference.py` | 위 노트북을 한 파일로 합친 것 — 설치·추론·검증 전 과정 |
 | `02_infer_vllm.py` | 추론 · 다수결 투표 · 답 추출 |
 | `05_check_submission.py` | 제출 파일 검증 |
 | `01_clean_data.py` | 라벨 정제, 포맷 통일 |
