@@ -47,8 +47,14 @@ TEST = glob.glob("/kaggle/input/**/test_submission.csv", recursive=True)
 assert len(TEST) == 1, "test_submission.csv 가 %d개: %s" % (len(TEST), TEST)
 TEST, = TEST
 
-SC = glob.glob("/kaggle/input/**/02_infer_vllm.py", recursive=True)
-assert len(SC) == 1, "02_infer_vllm.py 가 %d개: %s" % (len(SC), SC)
+# 02_infer_vllm.py 는 이 파일 옆 → /kaggle/working → /kaggle/input 순으로 찾는다.
+# 저장소를 통째로 데이터셋으로 올렸든, working 에 풀어놨든 동작해야 한다.
+_here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "."
+SC = ([os.path.join(_here, "02_infer_vllm.py")]
+      if os.path.isfile(os.path.join(_here, "02_infer_vllm.py")) else
+      glob.glob("/kaggle/working/**/02_infer_vllm.py", recursive=True)
+      or glob.glob("/kaggle/input/**/02_infer_vllm.py", recursive=True))
+assert len(SC) == 1, "02_infer_vllm.py 를 %d개 찾음: %s" % (len(SC), SC)
 SC, = SC
 
 # 모델 폴더. config.json 첫 매치를 쓰면 노트북에 함께 붙어 있는 "베이스"

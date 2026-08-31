@@ -121,13 +121,56 @@ DATA=deep_chal_math_clean_v5.csv RUN=qwen_v4 LR=2e-4 EPOCHS=1 python 03_train_sf
 
 ### 4.3 추론 — 제출 파일 재현
 
-**`kaggle_inference.py` 하나로 재현된다.** 캐글 노트북(GPU T4 x2, Internet Off)에
-아래를 Input 으로 붙이고 실행하면 `submission.csv` 가 나온다.
+제출 파일은 **캐글 노트북에서** 만들었다. 아래 구성을 그대로 재현하면 된다.
 
-- 공개 휠 데이터셋 (`vllm_wheels/`)
-- 파인튜닝 모델 (1절 링크)
-- 이 저장소 (`02_infer_vllm.py` 필요)
-- 주최측 `test_submission.csv`
+#### 노트북 설정
+
+| 항목 | 값 |
+|---|---|
+| Accelerator | **GPU T4 x 2** (P100 은 compute capability 6.0 이라 vLLM 이 뜨지 않는다) |
+| Internet | **Off** (규칙 6a) |
+| Environment | 기본 이미지 (Python 3.12.13) |
+
+#### Input 에 붙일 것 4개
+
+| # | 대상 | 경로 |
+|---|---|---|
+| 1 | 파인튜닝 모델 | Datasets → `gamaius/qwen-v4` |
+| 2 | 오프라인 휠 | Datasets → `gamaius/qwen-probe` (내부에 `vllm_wheels/`) |
+| 3 | 이 저장소 | 아래 참고 |
+| 4 | 주최측 `test_submission.csv` | 대회 Data 탭 |
+
+3번은 저장소를 내려받아 캐글 데이터셋으로 올리면 된다.
+`kaggle_inference.py` 는 `02_infer_vllm.py` 를 **자기 파일 옆 → `/kaggle/working` →
+`/kaggle/input`** 순으로 찾으므로, 데이터셋으로 붙이든 노트북에서 직접 풀어놓든
+동작한다.
+
+```bash
+git clone https://github.com/GaMaius/qwen-v4
+cd qwen-v4 && kaggle datasets init -p . && kaggle datasets create -p .
+```
+
+#### 실행
+
+노트북에 셀 두 개를 만든다.
+
+```python
+# 셀 1 — 오프라인 설치 (약 260초)
+import glob, os, sys
+W = os.path.dirname(sorted(glob.glob("/kaggle/input/**/*.whl", recursive=True))[0])
+!{sys.executable} -m pip install --no-index --find-links={W} vllm torchvision
+!{sys.executable} -m pip uninstall -y torchaudio
+```
+
+```python
+# 셀 2 — 추론 (약 4시간). /kaggle/working/submission.csv 가 나온다
+%run /kaggle/input/<저장소-데이터셋>/kaggle_inference.py
+```
+
+`kaggle_inference.py` 는 실행 전에 입력 파일·모델 폴더·가중치 크기·vLLM 설치를
+모두 `assert` 로 확인한다. **특히 모델은 `qwen_v4_merged` 로 이름을 고정한다** —
+노트북에 베이스 Qwen2.5-3B-Instruct 가 함께 붙어 있으면 그쪽이 먼저 잡혀,
+파인튜닝되지 않은 모델로 4시간을 돌리게 된다.
 
 아래는 그 스크립트가 실제로 실행하는 명령이다.
 
