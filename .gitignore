@@ -1,0 +1,41 @@
+# 자격증명 — 절대 커밋 금지
+kaggle.json
+*.pem
+*.key
+*.pyc
+.env
+
+# 대용량 학습 데이터. 01/04 스크립트로 재생성되며, 규칙이 요구하는 것은
+# 파일 자체가 아니라 출처 명시(README 3.2절)다.
+deep_chal_math_clean_v4.csv
+deep_chal_math_clean_v5.csv
+deep_chal_math_master_train_v3.csv
+train_mix_v6.csv
+rft_data.csv
+rft_pool.csv
+probe_10k.csv
+unsolved_ids.csv
+qwen_dpo_dataset.csv
+
+# 모델 산출물
+*.safetensors
+*_merged/
+checkpoint-*/
+__pycache__/
+
+# RFT 실험 부산물 43MB. 최종 모델에 쓰이지 않았고 재현에 불필요하다.
+rft_out/
+
+# 작업 노트 · 주최측 원문 · 구버전 노트북
+qwen_v3.ipynb
+COLAB_RFT_CELLS.md
+HANDOVER_2026-08-21.md
+대회 설명.md
+세션이어받기.md
+
+# 내부 운영 문서
+COLAB_V5_EVAL.md
+
+# 주최측 제공 데이터 — 공개 재배포하지 않는다 (id 목록만 공유)
+deep_chal_math_leaderboard_filtered.csv
+local_val_500.csv
